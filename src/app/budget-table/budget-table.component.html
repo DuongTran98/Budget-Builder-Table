@@ -1,0 +1,207 @@
+<div class="container mx-auto p-4">
+  <div class="mb-4 flex gap-4 items-center">
+    <div class="flex items-center gap-2">
+      <label class="font-semibold">Start Date:</label>
+      <input type="month" 
+             [value]="getFormattedDate(startDate)"
+             (change)="updateDateRange($event, true)"
+             class="border rounded p-2">
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="font-semibold">End Date:</label>
+      <input type="month" 
+             [value]="getFormattedDate(endDate)"
+             (change)="updateDateRange($event, false)"
+             class="border rounded p-2">
+    </div>
+  </div>
+
+  <table class="w-full border-collapse">
+    <thead>
+      <tr>
+        <th class="border border-gray-300 bg-gray-100 p-2 text-left">Start Period V End Period V</th>
+        <th *ngFor="let month of months" class="border border-gray-300 bg-gray-100 p-2 text-left">{{month}}</th>
+        <th class="border border-gray-300 bg-gray-100 p-2 text-left">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <ng-container *ngFor="let category of incomeCategories; let categoryIndex = index; let last = last">
+        <tr>
+          <td class="border border-gray-300 p-2 font-bold">
+            <ng-container *ngIf="category.isDefault; else editableName">
+              {{category.name}}
+            </ng-container>
+            <ng-template #editableName>
+              <input type="text" 
+                     [(ngModel)]="category.name"
+                     class="w-full p-1 font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+            </ng-template>
+          </td>
+          <td *ngFor="let month of months"
+              class="border border-gray-300 p-2">
+            <input type="number"
+                   [(ngModel)]="category.values[month]"
+                   (ngModelChange)="updateParentValue(categoryIndex, month, $event)"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+          <td class="border border-gray-300 p-2"></td>
+        </tr>
+
+        <tr *ngFor="let item of category.items; let itemIndex = index">
+          <td class="border border-gray-300 p-2 pl-8">
+            <input type="text" 
+                   [(ngModel)]="item.name"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+          
+          <td *ngFor="let month of months"
+              class="border border-gray-300 p-2"
+              
+              (click)="selectedCell = {rowIndex: itemIndex, colIndex: months.indexOf(month)}">
+            <input type="number"
+                   [(ngModel)]="item.values[month]"
+                   (ngModelChange)="updateValue(categoryIndex, itemIndex, month, $event)"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+
+          <td class="border border-gray-300 p-2">
+            <button (click)="deleteItem(categoryIndex, itemIndex)"
+                    class="px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded">
+              Delete
+            </button>
+          </td>
+        </tr>
+
+        <!-- Category Total -->
+        <tr class="bg-gray-50">
+          <td class="border border-gray-300 p-2 font-semibold">Sub Totals</td>
+          <td *ngFor="let month of months" class="border border-gray-300 p-2">
+            {{getCategoryMonthTotal(categoryIndex, month) | number:'1.2-2'}}
+          </td>
+          <td class="border border-gray-300 p-2">
+            <button (click)="addNewCategory(categoryIndex)"
+                    class="px-3 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">
+              Add Item
+            </button>
+          </td>
+        </tr>
+
+        <!-- Add New Parent Category Button -->
+        <tr *ngIf="last">
+          <td class="border border-gray-300 p-2" [attr.colspan]="months.length + 2">
+            <button (click)="addNewParentCategory()"
+                    class="w-full px-4 py-2 text-left text-green-600 hover:text-green-700 hover:bg-green-50 rounded">
+              + Add New Income Category
+            </button>
+          </td>
+        </tr>
+      </ng-container>
+
+      <!-- Grand Total -->
+      <tr class="bg-gray-100 font-bold">
+        <td class="border border-gray-300 p-2">Income Total</td>
+        <td *ngFor="let month of months" class="border border-gray-300 p-2">
+          {{getAllCategoriesMonthTotal(month) | number:'1.2-2'}}
+        </td>
+        <td class="border border-gray-300 p-2"></td>
+      </tr>
+    </tbody>
+
+    <tbody>
+      <ng-container *ngFor="let category of expenseCategories; let categoryIndex = index; let last = last">
+        <tr>
+          <td class="border border-gray-300 p-2 font-bold">
+            <ng-container *ngIf="category.isDefault; else editableExpenseName">
+              {{category.name}}
+            </ng-container>
+            <ng-template #editableExpenseName>
+              <input type="text" 
+                     [(ngModel)]="category.name"
+                     class="w-full p-1 font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+            </ng-template>
+          </td>
+          <td *ngFor="let month of months"
+              class="border border-gray-300 p-2">
+            <input type="number"
+                   [(ngModel)]="category.values[month]"
+                   (ngModelChange)="updateExpenseParentValue(categoryIndex, month, $event)"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+          <td class="border border-gray-300 p-2"></td>
+        </tr>
+
+        <tr *ngFor="let item of category.items; let itemIndex = index">
+          <td class="border border-gray-300 p-2 pl-8">
+            <input type="text" 
+                   [(ngModel)]="item.name"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+          
+          <td *ngFor="let month of months"
+              class="border border-gray-300 p-2">
+            <input type="number"
+                   [(ngModel)]="item.values[month]"
+                   (ngModelChange)="updateExpenseValue(categoryIndex, itemIndex, month, $event)"
+                   class="w-full p-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded">
+          </td>
+
+          <td class="border border-gray-300 p-2">
+            <button (click)="deleteExpenseItem(categoryIndex, itemIndex)"
+                    class="px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded">
+              Delete
+            </button>
+          </td>
+        </tr>
+
+        <!-- Category Total -->
+        <tr class="bg-gray-50">
+          <td class="border border-gray-300 p-2 font-semibold">Sub Totals</td>
+          <td *ngFor="let month of months" class="border border-gray-300 p-2">
+            {{getExpenseCategoryMonthTotal(categoryIndex, month) | number:'1.2-2'}}
+          </td>
+          <td class="border border-gray-300 p-2">
+            <button (click)="addNewExpenseItem(categoryIndex)"
+                    class="px-3 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded">
+              Add Item
+            </button>
+          </td>
+        </tr>
+
+        <!-- Add New Expense Category Button -->
+        <tr *ngIf="last">
+          <td class="border border-gray-300 p-2" [attr.colspan]="months.length + 2">
+            <button (click)="addNewExpenseCategory()"
+                    class="w-full px-4 py-2 text-left text-red-600 hover:text-red-700 hover:bg-red-50 rounded">
+              + Add New Expense Category
+            </button>
+          </td>
+        </tr>
+      </ng-container>
+
+      <!-- Expenses Total -->
+      <tr class="bg-gray-100 font-bold">
+        <td class="border border-gray-300 p-2">Expenses Total</td>
+        <td *ngFor="let month of months" class="border border-gray-300 p-2">
+          {{getAllExpensesMonthTotal(month) | number:'1.2-2'}}
+        </td>
+        <td class="border border-gray-300 p-2"></td>
+      </tr>
+
+      <tr class="bg-gray-100 font-bold">
+        <td class="border border-gray-300 p-2">Profit/Loss</td>
+        <td *ngFor="let month of months" 
+            class="border border-gray-300 p-2"
+            [class.text-green-600]="getProfitLoss(month) > 0"
+            [class.text-red-600]="getProfitLoss(month) < 0">
+          {{getProfitLoss(month) | number:'1.2-2'}}
+        </td>
+        <td class="border border-gray-300 p-2"></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+
+
+</div>
