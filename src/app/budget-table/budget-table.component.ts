@@ -1,30 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
-interface IncomeItem {
-  name: string;
-  values: { [key: string]: number };
-}
-
-interface IncomeCategory {
-  name: string;
-  items: IncomeItem[];
-  isDefault?: boolean;
-  values: { [key: string]: number };  // Add values to parent category
-}
-
-interface ExpenseItem {
-  name: string;
-  values: { [key: string]: number };
-}
-
-interface ExpenseCategory {
-  name: string;
-  items: ExpenseItem[];
-  isDefault?: boolean;
-  values: { [key: string]: number };
-}
+import { IncomeCategory, ExpenseCategory, BaseCategory, BaseItem } from './models/budget.types';
 
 @Component({
   selector: 'app-budget-table',
@@ -39,6 +16,11 @@ export class BudgetTableComponent implements OnInit {
   selectedCell: { rowIndex: number, colIndex: number } | null = null;
   startDate: Date = new Date(2024, 0, 1); // Default to January 2024
   endDate: Date = new Date(2024, 11, 31); // Default to December 2024
+
+  @ViewChildren('newIncomeItemInput') newIncomeItemInputs!: QueryList<ElementRef>;
+  @ViewChildren('newExpenseItemInput') newExpenseItemInputs!: QueryList<ElementRef>;
+  @ViewChildren('newIncomeCategoryInput') newIncomeCategoryInputs!: QueryList<ElementRef>;
+  @ViewChildren('newExpenseCategoryInput') newExpenseCategoryInputs!: QueryList<ElementRef>;
 
   constructor() {
   }
@@ -115,100 +97,104 @@ export class BudgetTableComponent implements OnInit {
     }
   }
 
-  private initializeIncome() {
+  private createMonthValues(): { [key: string]: number } {
     const monthValues: { [key: string]: number } = {};
     this.months.forEach(month => monthValues[month] = 0);
+    return monthValues;
+  }
 
-    this.incomeCategories = [
+  private createCategory(name: string, isDefault: boolean = false): BaseCategory {
+    return {
+      name,
+      isDefault,
+      values: this.createMonthValues(),
+      items: []
+    };
+  }
+
+  private createItem(name: string): BaseItem {
+    return {
+      name,
+      values: this.createMonthValues()
+    };
+  }
+
+  private initializeCategories(defaultCategories: { name: string, items: string[] }[]): BaseCategory[] {
+    return defaultCategories.map(cat => ({
+      ...this.createCategory(cat.name, true),
+      items: cat.items.map(itemName => this.createItem(itemName))
+    }));
+  }
+
+  private initializeIncome() {
+    const defaultCategories = [
       {
         name: 'General Income',
-        isDefault: true,
-        values: { ...monthValues },
-        items: [
-          { name: 'Sales', values: { ...monthValues } },
-          { name: 'Commissions', values: { ...monthValues } }
-        ]
+        items: ['Sales', 'Commissions']
       },
       {
         name: 'Other Income',
-        isDefault: true,
-        values: { ...monthValues },
-        items: [
-          { name: 'Training', values: { ...monthValues } },
-          { name: 'Consulting', values: { ...monthValues } }
-        ]
+        items: ['Training', 'Consulting']
       }
     ];
+    this.incomeCategories = this.initializeCategories(defaultCategories);
   }
 
   private initializeExpenses() {
-    const monthValues: { [key: string]: number } = {};
-    this.months.forEach(month => monthValues[month] = 0);
-
-    this.expenseCategories = [
+    const defaultCategories = [
       {
         name: 'Fixed Expenses',
-        isDefault: true,
-        values: { ...monthValues },
-        items: [
-          { name: 'Rent', values: { ...monthValues } },
-          { name: 'Utilities', values: { ...monthValues } }
-        ]
+        items: ['Rent', 'Utilities']
       },
       {
         name: 'Variable Expenses',
-        isDefault: true,
-        values: { ...monthValues },
-        items: [
-          { name: 'Marketing', values: { ...monthValues } },
-          { name: 'Office Supplies', values: { ...monthValues } }
-        ]
+        items: ['Marketing', 'Office Supplies']
       }
     ];
+    this.expenseCategories = this.initializeCategories(defaultCategories);
+  }
+
+  private addNewItem(categories: BaseCategory[], categoryIndex: number, inputs: QueryList<ElementRef>) {
+    const category = categories[categoryIndex];
+    category.items.push(this.createItem('New Child Category'));
+
+    const previousItemsCount = categories
+      .slice(0, categoryIndex + 1)
+      .reduce((sum, cat) => sum + cat.items.length, 0);
+
+    setTimeout(() => {
+      const inputArray = inputs.toArray();
+      const lastInput = inputArray[previousItemsCount - 1];
+      if (lastInput) {
+        lastInput.nativeElement.focus();
+      }
+    });
   }
 
   addNewCategory(categoryIndex: number) {
-    const monthValues: { [key: string]: number } = {};
-    this.months.forEach(month => monthValues[month] = 0);
-    
-    this.incomeCategories[categoryIndex].items.push({
-      name: 'New Item',
-      values: monthValues
+    this.addNewItem(this.incomeCategories, categoryIndex, this.newIncomeItemInputs);
+  }
+
+  addNewExpenseItem(categoryIndex: number) {
+    this.addNewItem(this.expenseCategories, categoryIndex, this.newExpenseItemInputs);
+  }
+
+  private addNewParentCategoryBase(categories: BaseCategory[], inputs: QueryList<ElementRef>) {
+    categories.push(this.createCategory('New Parent Category'));
+    setTimeout(() => {
+      const lastInput = inputs.last;
+      if (lastInput) {
+        lastInput.nativeElement.focus();
+      }
     });
   }
 
   addNewParentCategory() {
-    const monthValues: { [key: string]: number } = {};
-    this.months.forEach(month => monthValues[month] = 0);
-    
-    this.incomeCategories.push({
-      name: 'New Income Category',
-      isDefault: false,
-      values: monthValues,
-      items: []
-    });
+    this.addNewParentCategoryBase(this.incomeCategories, this.newIncomeCategoryInputs);
   }
 
   addNewExpenseCategory() {
-    const monthValues: { [key: string]: number } = {};
-    this.months.forEach(month => monthValues[month] = 0);
-    
-    this.expenseCategories.push({
-      name: 'New Expense Category',
-      isDefault: false,
-      values: monthValues,
-      items: []
-    });
-  }
-
-  addNewExpenseItem(categoryIndex: number) {
-    const monthValues: { [key: string]: number } = {};
-    this.months.forEach(month => monthValues[month] = 0);
-    
-    this.expenseCategories[categoryIndex].items.push({
-      name: 'New Expense',
-      values: monthValues
-    });
+    this.addNewParentCategoryBase(this.expenseCategories, this.newExpenseCategoryInputs);
   }
 
   deleteItem(categoryIndex: number, itemIndex: number) {
@@ -271,5 +257,13 @@ export class BudgetTableComponent implements OnInit {
     const income = this.getAllCategoriesMonthTotal(month);
     const expenses = this.getAllExpensesMonthTotal(month);
     return income - expenses;
+  }
+
+  handleEnterKey(isExpense: boolean = false) {
+    if (isExpense) {
+      this.addNewExpenseCategory();
+    } else {
+      this.addNewParentCategory();
+    }
   }
 }
